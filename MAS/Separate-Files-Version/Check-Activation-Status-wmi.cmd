@@ -10,20 +10,24 @@
 
 
 
-:: change to 1 to use VBScript instead wmic.exe to access WMI
-:: this option is automatically enabled for Windows 11 build 22483 and later
-set WMI_VBS=0
 
+set WMI_VBS=0
 @cls
+set _args=
+set _args=%*
+for %%A in (%_args%) do (
+if /i "%%A"=="-wow" set _rel1=1
+if /i "%%A"=="-arm" set _rel2=1
+)
 set "_cmdf=%~f0"
-if exist "%SystemRoot%\Sysnative\cmd.exe" (
+if exist "%SystemRoot%\Sysnative\cmd.exe" if not defined _rel1 (
 setlocal EnableDelayedExpansion
-start %SystemRoot%\Sysnative\cmd.exe /c ""!_cmdf!" "
+start %SystemRoot%\Sysnative\cmd.exe /c ""!_cmdf!" -wow"
 exit /b
 )
-if exist "%SystemRoot%\SysArm32\cmd.exe" if /i %PROCESSOR_ARCHITECTURE%==AMD64 (
+if exist "%SystemRoot%\SysArm32\cmd.exe" if /i %PROCESSOR_ARCHITECTURE%==AMD64 if not defined _rel2 (
 setlocal EnableDelayedExpansion
-start %SystemRoot%\SysArm32\cmd.exe /c ""!_cmdf!" "
+start %SystemRoot%\SysArm32\cmd.exe /c ""!_cmdf!" -arm"
 exit /b
 )
 color 07
@@ -52,12 +56,54 @@ dir /b /s /a:-d "!ProgramData!\Microsoft\Office\Licenses\*1*" 1>nul 2>nul && set
 pushd "!_work!"
 setlocal DisableDelayedExpansion
 if %winbuild% LSS 9200 if not exist "%SystemRoot%\servicing\Packages\Microsoft-Windows-PowerShell-WTR-Package~*.mum" set _Identity=0
-set _pwrsh=1
-if not exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" set _pwrsh=0
+
+set "SysPath=%SystemRoot%\System32"
+set "Path=%SystemRoot%\System32;%SystemRoot%\System32\Wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\"
+if exist "%SystemRoot%\Sysnative\reg.exe" (
+set "SysPath=%SystemRoot%\Sysnative"
+set "Path=%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%Path%"
+)
+
+::  Check LF line ending
+
+pushd "%~dp0"
+>nul findstr /rxc:".*" "%~nx0"
+if not %errorlevel%==0 (
+echo:
+echo Error: Script either has LF line ending issue, or it failed to read itself.
+echo:
+ping 127.0.0.1 -n 6 > nul
+popd
+exit /b
+)
+popd
+
+set _cwmi=0
+for %%# in (wmic.exe) do @if not "%%~$PATH:#"=="" (
+wmic path Win32_ComputerSystem get CreationClassName /value 2>nul | find /i "ComputerSystem" 1>nul && set _cwmi=1
+)
+
+if %_cwmi% EQU 0 (
+echo:
+echo Error: WMI is not responding in the system.
+echo:
+echo In MAS, Goto Troubleshoot and run Fix WMI option.
+echo:
+echo Press any key to exit...
+pause >nul
+exit /b
+)
+
+set "line2=************************************************************"
+set "line3=____________________________________________________________"
+set "_psc=powershell"
+
+set _prsh=1
+for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" set _prsh=0
 set "_csg=cscript.exe //NoLogo //Job:WmiMulti "%~nx0?.wsf""
 set "_csq=cscript.exe //NoLogo //Job:WmiQuery "%~nx0?.wsf""
 set "_csx=cscript.exe //NoLogo //Job:XPDT "%~nx0?.wsf""
-if %winbuild% GEQ 22483 set WMI_VBS=1
+if %_cwmi% EQU 0 set WMI_VBS=1
 if %WMI_VBS% EQU 0 (
 set "_zz1=wmic path"
 set "_zz2=where"
@@ -77,20 +123,7 @@ set "_zz6=""
 set "_zz7=%_csq%"
 set "_zz8="
 )
-
-set "SysPath=%SystemRoot%\System32"
-if exist "%SystemRoot%\Sysnative\reg.exe" (set "SysPath=%SystemRoot%\Sysnative")
-set "Path=%SysPath%;%SystemRoot%;%SysPath%\Wbem;%SysPath%\WindowsPowerShell\v1.0\"
-set "line2=************************************************************"
-set "line3=____________________________________________________________"
-
-set _WSH=1
-reg query "HKCU\SOFTWARE\Microsoft\Windows Script Host\Settings" /v Enabled 2>nul | find /i "0x0" 1>nul && (set _WSH=0)
-reg query HKU\S-1-5-19 1>nul 2>nul && (
-reg query "HKLM\SOFTWARE\Microsoft\Windows Script Host\Settings" /v Enabled 2>nul | find /i "0x0" 1>nul && (set _WSH=0)
-)
-if %_WSH% EQU 0 if %WMI_VBS% NEQ 0 goto :E_VBS
-
+set _WSH=0
 set OsppHook=1
 sc query osppsvc >nul 2>&1
 if %errorlevel% EQU 1060 set OsppHook=0
@@ -195,8 +228,8 @@ set "LicenseMsg=Time remaining: %GracePeriodRemaining% minute(s) (%_gpr% day(s))
 if %_gpr% GEQ 1 if %_WSH% EQU 1 (
 for /f "tokens=* delims=" %%# in ('%_csx% %GracePeriodRemaining%') do set "_xpr=%%#"
 )
-if %_gpr% GEQ 1 if %_pwrsh% EQU 1 if not defined _xpr (
-for /f "tokens=* delims=" %%# in ('powershell "$([DateTime]::Now.addMinutes(%GracePeriodRemaining%)).ToString('yyyy-MM-dd HH:mm:ss')" 2^>nul') do set "_xpr=%%#"
+if %_gpr% GEQ 1 if %_prsh% EQU 1 if not defined _xpr (
+for /f "tokens=* delims=" %%# in ('%_psc% "$([DateTime]::Now.addMinutes(%GracePeriodRemaining%)).ToString('yyyy-MM-dd HH:mm:ss')" 2^>nul') do set "_xpr=%%#"
 title Check Activation Status [wmi]
 )
 
@@ -311,12 +344,12 @@ if defined ExpireMsg echo.&echo.    %ExpireMsg%
 exit /b
 
 :casWend
-if %_Identity% EQU 1 if %_pwrsh% EQU 1 (
+if %_Identity% EQU 1 if %_prsh% EQU 1 (
 echo %line2%
 echo ***                  Office vNext Status                 ***
 echo %line2%
 setlocal EnableDelayedExpansion
-powershell "$f=[IO.File]::ReadAllText('!_batp!') -split ':vNextDiag\:.*';iex ($f[1])"
+%_psc% "$f=[IO.File]::ReadAllText('!_batp!') -split ':vNextDiag\:.*';iex ($f[1])"
 title Check Activation Status [wmi]
 echo %line3%
 echo.
@@ -326,20 +359,11 @@ echo Press any key to exit.
 pause >nul
 exit /b
 
-:E_VBS
-echo ==== ERROR ====
-echo Windows Script Host is disabled.
-echo It is required for this script to work.
-echo.
-echo Press any key to exit.
-pause >nul
-exit /b
-
 :vNextDiag:
 function PrintModePerPridFromRegistry
 {
 	$vNextRegkey = "HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\Licensing\LicensingNext"
-	$vNextPrids = Get-Item -Path $vNextRegkey -ErrorAction Ignore | Select-Object -ExpandProperty 'property' | Where-Object -FilterScript {$_ -Ne 'InstalledGraceKey' -And $_ -Ne 'MigrationToV5Done' -And $_ -Ne 'test' -And $_ -Ne 'unknown'}
+	$vNextPrids = Get-Item -Path $vNextRegkey -ErrorAction Ignore | Select-Object -ExpandProperty 'property' | Where-Object -FilterScript {$_.ToLower() -like "*retail" -or $_.ToLower() -like "*volume"}
 	If ($vNextPrids -Eq $null)
 	{
 		Write-Host "No registry keys found."
@@ -434,15 +458,20 @@ function PrintLicensesInformation
 		$license = (Get-Content -Encoding Unicode $_.FullName | ConvertFrom-Json).License
 		$decodedLicense = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($license)) | ConvertFrom-Json
 		$licenseType = $decodedLicense.LicenseType
-		$userId = $decodedLicense.Metadata.UserId
-		$identitiesRegkey = Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\Identity\Identities\${userId}*" -ErrorAction Ignore
+		If ($null -Ne $decodedLicense.ExpiresOn)
+		{
+			$expiry = [DateTime]::Parse($decodedLicense.ExpiresOn, $null, 48)
+		}
+		Else
+		{
+			$expiry = New-Object DateTime
+		}
 		$licenseState = $null
 		If ((Get-Date) -Gt (Get-Date $decodedLicense.MetaData.NotAfter))
 		{
 			$licenseState = "RFM"
 		}
-		ElseIf (($decodedLicense.ExpiresOn -Eq $null) -Or
-			((Get-Date) -Lt (Get-Date $decodedLicense.ExpiresOn)))
+		ElseIf ((Get-Date) -Lt (Get-Date $expiry))
 		{
 			$licenseState = "Licensed"
 		}
@@ -460,11 +489,11 @@ function PrintLicensesInformation
 				Acid = $decodedLicense.Acid;
 				LicenseState = $licenseState;
 				EntitlementStatus = $decodedLicense.Status;
+				EntitlementExpiration = $decodedLicense.ExpiresOn;
 				ReasonCode = $decodedLicense.ReasonCode;
 				NotBefore = $decodedLicense.Metadata.NotBefore;
 				NotAfter = $decodedLicense.Metadata.NotAfter;
 				NextRenewal = $decodedLicense.Metadata.RenewAfter;
-				Expiration = $decodedLicense.ExpiresOn;
 				TenantId = $decodedLicense.Metadata.TenantId;
 			} | ConvertTo-Json
 		}
@@ -479,11 +508,11 @@ function PrintLicensesInformation
 				DeviceId = $decodedLicense.Metadata.DeviceId;
 				LicenseState = $licenseState;
 				EntitlementStatus = $decodedLicense.Status;
+				EntitlementExpiration = $decodedLicense.ExpiresOn;
 				ReasonCode = $decodedLicense.ReasonCode;
 				NotBefore = $decodedLicense.Metadata.NotBefore;
 				NotAfter = $decodedLicense.Metadata.NotAfter;
 				NextRenewal = $decodedLicense.Metadata.RenewAfter;
-				Expiration = $decodedLicense.ExpiresOn;
 				TenantId = $decodedLicense.Metadata.TenantId;
 			} | ConvertTo-Json
 		}
@@ -507,47 +536,4 @@ PrintLicensesInformation -Mode "NUL"
 	Write-Host
 PrintLicensesInformation -Mode "Device"
 :vNextDiag:
-
------ Begin wsf script --->
-<package>
-   <job id="WmiQuery">
-      <script language="VBScript">
-         If WScript.Arguments.Count = 3 Then
-            wExc = "Select " & WScript.Arguments.Item(2) & " from " & WScript.Arguments.Item(0) & " where " & WScript.Arguments.Item(1)
-            wGet = WScript.Arguments.Item(2)
-         Else
-            wExc = "Select " & WScript.Arguments.Item(1) & " from " & WScript.Arguments.Item(0)
-            wGet = WScript.Arguments.Item(1)
-         End If
-         Set objCol = GetObject("winmgmts:\\.\root\CIMV2").ExecQuery(wExc,,48)
-         For Each objItm in objCol
-            For each Prop in objItm.Properties_
-               If LCase(Prop.Name) = LCase(wGet) Then
-                  WScript.Echo Prop.Name & "=" & Prop.Value
-                  Exit For
-               End If
-            Next
-         Next
-      </script>
-   </job>
-   <job id="WmiMulti">
-      <script language="VBScript">
-         If WScript.Arguments.Count = 3 Then
-            wExc = "Select " & WScript.Arguments.Item(2) & " from " & WScript.Arguments.Item(0) & " where " & WScript.Arguments.Item(1)
-         Else
-            wExc = "Select " & WScript.Arguments.Item(1) & " from " & WScript.Arguments.Item(0)
-         End If
-         Set objCol = GetObject("winmgmts:\\.\root\CIMV2").ExecQuery(wExc,,48)
-         For Each objItm in objCol
-            For each Prop in objItm.Properties_
-               WScript.Echo Prop.Name & "=" & Prop.Value
-            Next
-         Next
-      </script>
-   </job>
-   <job id="XPDT">
-      <script language="VBScript">
-         WScript.Echo DateAdd("n", WScript.Arguments.Item(0), Now)
-      </script>
-   </job>
-</package>
+::===================================================
