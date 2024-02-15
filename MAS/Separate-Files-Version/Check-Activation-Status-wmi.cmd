@@ -1,10 +1,9 @@
-<!-- : Begin batch script
 @setlocal DisableDelayedExpansion
 @echo off
 
 
 
-::  Check-Activation-Status-wmi.cmd
+::  Check-Activation-Status
 ::  Written by @abbodi1406
 ::  forums.mydigitallife.net/posts/838808
 
@@ -67,16 +66,30 @@ set "Path=%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnat
 ::  Check LF line ending
 
 pushd "%~dp0"
->nul findstr /rxc:".*" "%~nx0"
-if not %errorlevel%==0 (
+>nul findstr /v "$" "%~nx0" && (
 echo:
-echo Error: Script either has LF line ending issue, or it failed to read itself.
+echo Error: Script either has LF line ending issue or an empty line at the end of the script is missing.
 echo:
-ping 127.0.0.1 -n 6 > nul
+ping 127.0.0.1 -n 6 >nul
 popd
 exit /b
 )
 popd
+
+set ohook=
+for %%# in (15 16) do (
+for %%A in ("%ProgramFiles%" "%ProgramW6432%" "%ProgramFiles(x86)%") do (
+if exist "%%~A\Microsoft Office\Office%%#\sppc*dll" set ohook=1
+)
+)
+
+for %%# in (System SystemX86) do (
+for %%G in ("Office 15" "Office") do (
+for %%A in ("%ProgramFiles%" "%ProgramW6432%" "%ProgramFiles(x86)%") do (
+if exist "%%~A\Microsoft %%~G\root\vfs\%%#\sppc*dll" set ohook=1
+)
+)
+)
 
 set _cwmi=0
 for %%# in (wmic.exe) do @if not "%%~$PATH:#"=="" (
@@ -153,6 +166,17 @@ for /f "tokens=2 delims==" %%# in ('%_qr%') do (
   call :casWout
   echo %line3%
   echo.
+)
+
+if defined ohook (
+echo.
+echo.
+echo %line2%
+echo ***            Office Ohook Activation Status            ***
+echo %line2%
+echo.
+powershell "write-host -back 'Black' -fore 'Yellow' 'Ohook for permanent Office activation is installed.'; write-host -back 'Black' -fore 'Yellow' 'You can ignore below Office activation status.'"
+echo.
 )
 
 :casWcon
@@ -338,7 +362,7 @@ if defined DiscoveredKeyManagementServiceMachineIpAddress echo.    KMS machine I
 echo.    KMS machine extended PID: %KeyManagementServiceProductKeyID%
 echo.    Activation interval: %VLActivationInterval% minutes
 echo.    Renewal interval: %VLRenewalInterval% minutes
-echo.    KMS host caching: %KeyManagementServiceHostCaching%
+echo.    K.M.S host caching: %KeyManagementServiceHostCaching%
 if defined KeyManagementServiceLookupDomain echo.    KMS SRV record lookup domain: %KeyManagementServiceLookupDomain%
 if defined ExpireMsg echo.&echo.    %ExpireMsg%
 exit /b
@@ -537,3 +561,4 @@ PrintLicensesInformation -Mode "NUL"
 PrintLicensesInformation -Mode "Device"
 :vNextDiag:
 ::===================================================
+:: Leave empty line below

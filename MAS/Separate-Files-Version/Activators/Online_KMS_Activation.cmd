@@ -1,3 +1,4 @@
+@set masver=2.5
 @setlocal DisableDelayedExpansion
 @echo off
 
@@ -13,15 +14,21 @@
 ::
 ::  Online KMS Activation Script is a part of 'Microsoft_Activation_Scripts' (MAS) project.
 ::  
-::  Homepage: mass grave.dev
+::  Homepage: mass grave[.]dev
 ::     Email: windowsaddict@protonmail.com
 ::  
 ::=================================================================================================
 
 
 
-
 ::========================================================================================================================================
+
+::  Set Path variable, it helps if it is misconfigured in the system
+
+set "PATH=%SystemRoot%\System32;%SystemRoot%\System32\wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\"
+if exist "%SystemRoot%\Sysnative\reg.exe" (
+set "PATH=%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%PATH%"
+)
 
 :: Re-launch the script with x64 process if it was initiated by x86 process on x64 bit Windows
 :: or with ARM64 process if it was initiated by x86/ARM32 process on ARM64 Windows
@@ -30,6 +37,10 @@ set "_cmdf=%~f0"
 for %%# in (%*) do (
 if /i "%%#"=="r1" set r1=1
 if /i "%%#"=="r2" set r2=1
+if /i "%%#"=="-qedit" (
+reg add HKCU\Console /v QuickEdit /t REG_DWORD /d "1" /f 1>nul
+rem check the code below admin elevation to understand why it's here
+)
 )
 
 if exist %SystemRoot%\Sysnative\cmd.exe if not defined r1 (
@@ -46,22 +57,34 @@ start %SystemRoot%\SysArm32\cmd.exe /c ""!_cmdf!" %* r2"
 exit /b
 )
 
-::  Set Path variable, it helps if it is misconfigured in the system
+::========================================================================================================================================
 
-set "PATH=%SystemRoot%\System32;%SystemRoot%\System32\wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\"
-if exist "%SystemRoot%\Sysnative\reg.exe" (
-set "PATH=%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%PATH%"
+set "blank="
+set "mas=ht%blank%tps%blank%://mass%blank%grave.dev/"
+
+::  Check if Null service is working, it's important for the batch script
+
+sc query Null | find /i "RUNNING"
+if %errorlevel% NEQ 0 (
+echo:
+echo Null service is not running, script may crash...
+echo:
+echo:
+echo Help - %mas%troubleshoot.html
+echo:
+echo:
+ping 127.0.0.1 -n 10
 )
+cls
 
 ::  Check LF line ending
 
 pushd "%~dp0"
->nul findstr /rxc:".*" "%~nx0"
-if not %errorlevel%==0 (
+>nul findstr /v "$" "%~nx0" && (
 echo:
-echo Error: Script either has LF line ending issue, or it failed to read itself.
+echo Error: Script either has LF line ending issue or an empty line at the end of the script is missing.
 echo:
-ping 127.0.0.1 -n 6 > nul
+ping 127.0.0.1 -n 6 >nul
 popd
 exit /b
 )
@@ -71,7 +94,7 @@ popd
 
 cls
 color 07
-title  Online KMS Activation
+title  Online KMS Activation %masver%
 
 ::  You are not supposed to edit anything below this.
 
@@ -96,8 +119,7 @@ set _unattendedact=
 set _args=%*
 if defined _args set _args=%_args:"=%
 if defined _args (
-set _unattended=1
-if "%_args%"=="-el"  set _unattended=
+echo "%_args%" | find /i "/KMS" >nul && set _unattended=1
 
 for %%A in (%_args%) do (
 if /i "%%A"=="-el"  (set _elev=1
@@ -116,14 +138,18 @@ if /i "%%A"=="-el"  (set _elev=1
 
 ::========================================================================================================================================
 
-set winbuild=1
+set "nul1=1>nul"
+set "nul2=2>nul"
+set "nul6=2^>nul"
 set "nul=>nul 2>&1"
+
 set psc=powershell.exe
+set winbuild=1
 for /f "tokens=6 delims=[]. " %%G in ('ver') do set winbuild=%%G
 
 set _NCS=1
 if %winbuild% LSS 10586 set _NCS=0
-if %winbuild% GEQ 10586 reg query "HKCU\Console" /v ForceV2 2>nul | find /i "0x0" 1>nul && (set _NCS=0)
+if %winbuild% GEQ 10586 reg query "HKCU\Console" /v ForceV2 %nul2% | find /i "0x0" %nul1% && (set _NCS=0)
 
 call :_colorprep
 set "_buf={$W=$Host.UI.RawUI.WindowSize;$B=$Host.UI.RawUI.BufferSize;$W.Height=31;$B.Height=300;$Host.UI.RawUI.WindowSize=$W;$Host.UI.RawUI.BufferSize=$B;}"
@@ -136,7 +162,7 @@ if %_Debug% EQU 1 set _unattended=1
 
 if %winbuild% LSS 7600 (
 %nceline%
-echo Unsupported OS version detected.
+echo Unsupported OS version detected [%winbuild%].
 echo Project is supported for Windows 7/8/8.1/10/11 and their Server equivalent.
 goto Done
 )
@@ -149,7 +175,7 @@ goto Done
 
 ::========================================================================================================================================
 
-::  Fix for the special characters limitation in path name
+::  Fix special characters limitation in path name
 
 set "_work=%~dp0"
 if "%_work:~-1%"=="\" set "_work=%_work:~0,-1%"
@@ -159,14 +185,14 @@ set "_batp=%_batf:'=''%"
 
 set _PSarg="""%~f0""" -el %_args%
 
-set "_ttemp=%temp%"
+set "_ttemp=%userprofile%\AppData\Local\Temp"
 set "_Local=%LocalAppData%"
 
 setlocal EnableDelayedExpansion
 
 ::========================================================================================================================================
 
-echo "!_batf!" | find /i "!_ttemp!" 1>nul && (
+echo "!_batf!" | find /i "!_ttemp!" %nul1% && (
 if /i not "!_work!"=="!_ttemp!" (
 %nceline%
 echo Script is launched from the temp folder,
@@ -181,13 +207,57 @@ goto Done
 
 ::  Elevate script as admin and pass arguments and preventing loop
 
->nul fltmc || (
-if not defined _elev %nul% %psc% "start cmd.exe -arg '/c \"!_PSarg:'=''!\"' -verb runas" && exit /b
+%nul1% fltmc || (
+if not defined _elev %psc% "start cmd.exe -arg '/c \"!_PSarg:'=''!\"' -verb runas" && exit /b
 %nceline%
-echo This script require administrator privileges.
+echo This script needs admin rights.
 echo To do so, right click on this script and select 'Run as administrator'.
 goto Done
 )
+
+::========================================================================================================================================
+
+::  This code disables QuickEdit for this cmd.exe session only without making permanent changes to the registry
+::  It is added because clicking on the script window pauses the operation and leads to the confusion that script stopped due to an error
+
+if defined _unattended set quedit=1
+for %%# in (%_args%) do (if /i "%%#"=="-qedit" set quedit=1)
+
+reg query HKCU\Console /v QuickEdit %nul2% | find /i "0x0" %nul1% || if not defined quedit (
+reg add HKCU\Console /v QuickEdit /t REG_DWORD /d "0" /f %nul1%
+start cmd.exe /c ""!_batf!" %_args% -qedit"
+rem quickedit reset code is added at the starting of the script instead of here because it takes time to reflect in some cases
+exit /b
+)
+
+::========================================================================================================================================
+
+::  Check for updates
+
+set -=
+set old=
+
+for /f "delims=[] tokens=2" %%# in ('ping -4 -n 1 updatecheck.mass%-%grave.dev') do (
+if not [%%#]==[] (echo "%%#" | find "127.69" %nul1% && (echo "%%#" | find "127.69.%masver%" %nul1% || set old=1))
+)
+
+if defined old (
+echo ________________________________________________
+%eline%
+echo You are running outdated version MAS %masver%
+echo ________________________________________________
+echo:
+if not defined _unattended (
+echo [1] Get Latest MAS
+echo [0] Continue Anyway
+echo:
+call :_color %_Green% "Enter a menu option in the Keyboard [1,0] :"
+choice /C:10 /N
+if !errorlevel!==2 rem
+if !errorlevel!==1 (start ht%-%tps://github.com/mass%-%gravel/Microsoft-Acti%-%vation-Scripts & start %mas% & exit /b)
+)
+)
+cls
 
 ::========================================================================================================================================
 
@@ -238,7 +308,7 @@ if defined _unattended if not defined _unattendedact goto Done
 
 ::========================================================================================================================================
 
-set "_title=Online KMS Activation"
+set "_title=Online KMS Activation %masver%"
 set _gui=
 
 :_KMS_Menu
@@ -252,7 +322,7 @@ reg query %kNext% /v MigrationToV5Done 2>nul | find /i "0x1" %nul% && call :offi
 
 set _tskinstalled=
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\taskcache\tasks" /f Path /s | find /i "\Activation-Renewal" >nul && (
-find /i "Ver:1.8" %ProgramData%\Activation-Renewal\Activation_task.cmd %nul% && set _tskinstalled=1
+find /i "Ver:1.9" "%ProgramFiles%\Activation-Renewal\Activation_task.cmd" %nul% && set _tskinstalled=1
 )
 
 set _oldtsk=
@@ -382,7 +452,12 @@ set "_log=%~dpn0"
 set "_work=%~dp0"
 if "%_work:~-1%"=="\" set "_work=%_work:~0,-1%"
 set _UNC=0
-if "%_work:~0,2%"=="\\" set _UNC=1
+if "%_work:~0,2%"=="\\" (
+set _UNC=1
+) else (
+net use %~d0 %_Null%
+if not errorlevel 1 set _UNC=1
+)
 for /f "skip=2 tokens=2*" %%a in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop') do call set "_dsk=%%b"
 if exist "%PUBLIC%\Desktop\desktop.ini" set "_dsk=%PUBLIC%\Desktop"
 set "_mO21a=Detected Office 2021 C2R Retail is activated"
@@ -407,6 +482,8 @@ if exist "%SystemRoot%\Servicing\Packages\Microsoft-Windows-Server*Edition~*.mum
 set "ESUEditions=ServerDatacenter,ServerDatacenterCore,ServerDatacenterV,ServerDatacenterVCore,ServerStandard,ServerStandardCore,ServerStandardV,ServerStandardVCore,ServerEnterprise,ServerEnterpriseCore,ServerEnterpriseV,ServerEnterpriseVCore"
 )
 for /f "tokens=6 delims=[]. " %%G in ('ver') do set winbuild=%%G
+set UBR=0
+if %winbuild% GEQ 7601 for /f "skip=2 tokens=2*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v UBR 2^>nul') do if not errorlevel 1 set /a UBR=%%b
 set "_csq=cscript.exe //NoLogo //Job:WmiQuery "%~nx0?.wsf""
 set "_csm=cscript.exe //NoLogo //Job:WmiMethod "%~nx0?.wsf""
 set "_csp=cscript.exe //NoLogo //Job:WmiPKey "%~nx0?.wsf""
@@ -437,10 +514,10 @@ pushd "!_work!"
 
 if not defined _unattended (
 mode con cols=98 lines=31
-%nul% %psc% "&%_buf%"
+%psc% "&%_buf%"
 title  %_title%
 ) else (
-title  Online KMS Activation
+title  Online KMS Activation %masver%
 )
 
 if defined _gui if %_Debug%==1 mode con cols=98 lines=30
@@ -608,7 +685,10 @@ IF %winbuild% LSS 14393 (
 )
 IF NOT "%EditionWMI%"=="" SET "EditionID=%EditionWMI%"
 IF /I "%EditionID%"=="IoTEnterprise" SET "EditionID=Enterprise"
-IF /I "%EditionID%"=="IoTEnterpriseS" IF %winbuild% LSS 22610 SET "EditionID=EnterpriseS"
+IF /I "%EditionID%"=="IoTEnterpriseS" IF %winbuild% LSS 22610 (
+SET "EditionID=EnterpriseS"
+IF %winbuild% GEQ 19041 IF %UBR% GEQ 2788 SET "EditionID=IoTEnterpriseS"
+)
 IF /I "%EditionID%"=="ProfessionalSingleLanguage" SET "EditionID=Professional"
 IF /I "%EditionID%"=="ProfessionalCountrySpecific" SET "EditionID=Professional"
 IF /I "%EditionID%"=="EnterpriseG" SET Win10Gov=1
@@ -2220,6 +2300,7 @@ if %_C16Msg% EQU 1 set _CtRMsg=1
 if %_C15Msg% EQU 1 set _CtRMsg=1
 if %_Office16% EQU 1 (
 for %%a in (%_RetIds%,ProPlus) do set "_%%a="
+for %%A in (19,21) do call :officeLoc %%A
 )
 if %_Office15% EQU 1 (
 for %%a in (%_R15Ids%,ProPlus) do set "_%%a="
@@ -3230,7 +3311,7 @@ goto :eof
 
 cls
 mode con: cols=91 lines=30
-title Online KMS Complete Uninstall
+title Online KMS Complete Uninstall %masver%
 
 set "key=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\taskcache\tasks"
 
@@ -3314,6 +3395,11 @@ echo Deleting [Folder] %ProgramData%\Activation-Renewal\
 rmdir /s /q "%ProgramData%\Activation-Renewal\" %nul%
 )
 
+If exist "%ProgramFiles%\Activation-Renewal\" (
+echo Deleting [Folder] %ProgramFiles%\Activation-Renewal\
+rmdir /s /q "%ProgramFiles%\Activation-Renewal\" %nul%
+)
+
 reg query "HKCR\DesktopBackground\shell\Activate Windows - Office" %nul% && (
 echo Deleting [Registry] HKCR\DesktopBackground\shell\Activate Windows - Office
 Reg delete "HKCR\DesktopBackground\shell\Activate Windows - Office" /f %nul%
@@ -3321,13 +3407,13 @@ Reg delete "HKCR\DesktopBackground\shell\Activate Windows - Office" /f %nul%
 
 reg query "%key%" /f Path /s | find /i "\Activation-Renewal" >nul && (set error_=1)
 reg query "%key%" /f Path /s | find /i "\Activation-Run_Once" >nul && (set error_=1)
-reg query "%key%" /f Path /s | find /i "\Online_KMS_Activation_Script-Run_Once" >nul && (set error_=1)
-reg query "%key%" /f Path /s | find /i "\Online_KMS_Activation_Script-Run_Once" >nul && (set error_=1)
+reg query "%key%" /f Path /s | find /i "\Online_KMS_Activation_Script" >nul && (set error_=1)
 If exist "%windir%\Online_KMS_Activation_Script\" (set error_=1)
 reg query "HKCR\DesktopBackground\shell\Activate Windows - Office" %nul% && (set error_=1)
 if exist "%ProgramData%\Online_KMS_Activation.cmd" (set error_=1)
 if exist "%ProgramData%\Online_KMS_Activation\" (set error_=1)
 if exist "%ProgramData%\Activation-Renewal\" (set error_=1)
+if exist "%ProgramFiles%\Activation-Renewal\" (set error_=1)
 exit /b
 
 :=========================================================================================================================================
@@ -3336,10 +3422,10 @@ exit /b
 
 cls
 mode con cols=91 lines=30
-title  Install Activation Auto-Renewal
+title  Install Activation Auto-Renewal %masver%
 
 set error_=
-set "_dest=%ProgramData%\Activation-Renewal"
+set "_dest=%ProgramFiles%\Activation-Renewal"
 set "key=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\taskcache\tasks"
 
 call :clearstuff %nul%
@@ -3352,7 +3438,7 @@ goto :RenDone
 )
 
 if not exist "%_dest%\" md "%_dest%\" %nul%
-set "_temp=%SystemRoot%\Temp\_taskwork"
+set "_temp=%SystemRoot%\Temp\_taskwork_%Random%"
 
 set nil=
 if exist "%_temp%\.*" rmdir /s /q "%_temp%\" %nul%
@@ -3364,8 +3450,8 @@ if defined ActTask (s%nil%cht%nil%asks /cre%nil%ate /tn "Activation-Run_Once" /r
 if exist "%_temp%\.*" rmdir /s /q "%_temp%\" %nul%
 
 call :createInfo.txt
-%nul% %psc% "$f=[io.file]::ReadAllText('!_batp!') -split \":_extracttask\:.*`r`n\"; [io.file]::WriteAllText('%_dest%\Activation_task.cmd', '@REM Dummy ' + '%random%' + [Environment]::NewLine + $f[1].Trim(), [System.Text.Encoding]::ASCII);"
-title  Install Activation Auto-Renewal
+%psc% "$f=[io.file]::ReadAllText('!_batp!') -split \":_extracttask\:.*`r`n\"; [io.file]::WriteAllText('%_dest%\Activation_task.cmd', '@REM Dummy ' + '%random%' + [Environment]::NewLine + $f[1].Trim(), [System.Text.Encoding]::ASCII);"
+title  Install Activation Auto-Renewal %masver%
 
 ::========================================================================================================================================
 
@@ -3445,14 +3531,14 @@ echo     Activation-Run_Once   [Activation Task - deletes itself once activated]
 echo     The scheduled tasks runs only if the system is connected to the Internet.
 echo:
 echo   - Files
-echo     C:\ProgramData\Activation-Renewal\Activation_task.cmd
-echo     C:\ProgramData\Activation-Renewal\Info.txt
-echo     C:\ProgramData\Activation-Renewal\Logs.txt
+echo     C:\Program Files\Activation-Renewal\Activation_task.cmd
+echo     C:\Program Files\Activation-Renewal\Info.txt
+echo     C:\Program Files\Activation-Renewal\Logs.txt
 echo ______________________________________________________________________________________________
 echo:
 echo   Online KMS Activation Script is a part of 'Microsoft_Activation_Scripts' [MAS] project.
 echo:   
-echo   Homepage: mass grave.dev
+echo   Homepage: mass grave[.]dev
 echo      Email: windowsaddict@protonmail.com
 )>"%_dest%\Info.txt"
 exit /b
@@ -3516,7 +3602,7 @@ exit /b
   </Settings>
   <Actions Context="LocalSystem">
     <Exec>
-      <Command>%ProgramData%\Activation-Renewal\Activation_task.cmd</Command>
+      <Command>%ProgramFiles%\Activation-Renewal\Activation_task.cmd</Command>
     <Arguments>Task</Arguments>
     </Exec>
   </Actions>
@@ -3573,7 +3659,7 @@ exit /b
   </Settings>
   <Actions Context="LocalSystem">
     <Exec>
-      <Command>%ProgramData%\Activation-Renewal\Activation_task.cmd</Command>
+      <Command>%ProgramFiles%\Activation-Renewal\Activation_task.cmd</Command>
     <Arguments>Task</Arguments>
     </Exec>
   </Actions>
@@ -3586,7 +3672,7 @@ exit /b
 
 :RenExport
 
-%nul% %psc% "$f=[io.file]::ReadAllText('!_batp!') -split \":%~1\:.*`r`n\"; [io.file]::WriteAllText('%~2',$f[1].Trim(),[System.Text.Encoding]::%~3);"
+%psc% "$f=[io.file]::ReadAllText('!_batp!') -split \":%~1\:.*`r`n\"; [io.file]::WriteAllText('%~2',$f[1].Trim(),[System.Text.Encoding]::%~3);"
 exit /b
 
 ::========================================================================================================================================
@@ -3600,7 +3686,7 @@ exit /b
 ::
 ::   This script is a part of 'Microsoft_Activation_Scripts' (MAS) project.
 ::
-::   Homepage: mass grave.dev
+::   Homepage: mass grave[.]dev
 ::      Email: windowsaddict@protonmail.com
 ::
 ::============================================================================
@@ -3647,7 +3733,7 @@ wmic path Win32_ComputerSystem get CreationClassName /value 2>nul | find /i "com
 )
 
 setlocal EnableDelayedExpansion
-if exist "%ProgramData%\Activation-Renewal\" call :_taskstart>>"%ProgramData%\Activation-Renewal\Logs.txt" & exit
+if exist "%ProgramFiles%\Activation-Renewal\" call :_taskstart>>"%ProgramFiles%\Activation-Renewal\Logs.txt" & exit
 
 ::========================================================================================================================================
 
@@ -4047,7 +4133,7 @@ if not [%KMS_IP%]==[!KMS_IP!] exit /b
 goto :_taskgetserv
 )
 
-:: Ver:1.8
+:: Ver:1.9
 ::========================================================================================================================================
 :_extracttask:
 
@@ -4193,3 +4279,4 @@ UninstallLicenses("sppc.dll")
 :cleanlicense:
 
 ::========================================================================================================================================
+:: Leave empty line below

@@ -4,7 +4,7 @@
 
 
 
-::  Check-Activation-Status-vbs.cmd
+::  Check-Activation-Status
 ::  Written by @abbodi1406
 ::  forums.mydigitallife.net/posts/838808
 
@@ -39,16 +39,30 @@ set "Path=%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnat
 ::  Check LF line ending
 
 pushd "%~dp0"
->nul findstr /rxc:".*" "%~nx0"
-if not %errorlevel%==0 (
+>nul findstr /v "$" "%~nx0" && (
 echo:
-echo Error: Script either has LF line ending issue, or it failed to read itself.
+echo Error: Script either has LF line ending issue or an empty line at the end of the script is missing.
 echo:
-ping 127.0.0.1 -n 6 > nul
+ping 127.0.0.1 -n 6 >nul
 popd
 exit /b
 )
 popd
+
+set ohook=
+for %%# in (15 16) do (
+for %%A in ("%ProgramFiles%" "%ProgramW6432%" "%ProgramFiles(x86)%") do (
+if exist "%%~A\Microsoft Office\Office%%#\sppc*dll" set ohook=1
+)
+)
+
+for %%# in (System SystemX86) do (
+for %%G in ("Office 15" "Office") do (
+for %%A in ("%ProgramFiles%" "%ProgramW6432%" "%ProgramFiles(x86)%") do (
+if exist "%%~A\Microsoft %%~G\root\vfs\%%#\sppc*dll" set ohook=1
+)
+)
+)
 
 set "_bit=64"
 set "_wow=1"
@@ -77,6 +91,17 @@ cscript //nologo slmgr.vbs /xpr
 del /f /q slmgr.vbs >nul 2>&1
 popd
 echo %line3%
+
+if defined ohook (
+echo.
+echo.
+echo %line2%
+echo ***            Office Ohook Activation Status            ***
+echo %line2%
+echo.
+powershell "write-host -back 'Black' -fore 'Yellow' 'Ohook for permanent Office activation is installed.'; write-host -back 'Black' -fore 'Yellow' 'You can ignore below Office activation status.'"
+echo.
+)
 
 :casVo16
 set office=
@@ -231,3 +256,4 @@ echo.
 echo Press any key to exit.
 pause >nul
 exit /b
+:: Leave empty line below
