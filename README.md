@@ -2,60 +2,106 @@
 
 <h1 align="center">Microsoft  Activation  Scripts (MAS)</h1>
 
-<p align="center">A Windows and Office activator using HWID / Ohook / KMS38 / Online KMS activation methods, with a focus on open-source code and fewer antivirus detections.</p>
-
-<p align="center">
-    <a href="https://discord.gg/tVFN4N84PP"><img src="https://img.shields.io/badge/Chat%20with%20us%20on%20Discord--blue?style=social&logo=discord" alt="Chat with us without signup" title="Chat with us without signup"></a>
-    <a href="https://www.reddit.com/r/MAS_Activator"><img src="https://img.shields.io/badge/MAS%20on%20Reddit--orange?style=social&logo=reddit" alt="MAS on Reddit" title="MAS on Reddit"></a>
-    <a href="https://twitter.com/massgravel"><img src="https://img.shields.io/twitter/follow/massgravel" alt="Follow us on X" title="Follow us on X"></a>
-</p>
+<p align="center">Open-source Windows and Office activator featuring HWID, Ohook, KMS38, and Online KMS activation methods, along with advanced troubleshooting.</p>
 
 <hr>
   
 ## Download / How to use it?
 
-### Method 1 - PowerShell (Recommended)
+### Method 1 - PowerShell (Windows 8 and later) ❤️
 
--   Right-click on the Windows start menu and select PowerShell or Terminal (Not CMD).
--   Copy and paste the code below and press enter  
+1.   Open PowerShell (Not CMD). To do that, right-click on the Windows start menu and select PowerShell or Terminal.
+2.   Copy and paste the code below and press enter  
 ```
 irm https://get.activated.win | iex
 ```
-or (deprecated, will be retired on Aug 31 2024, use above instead)  
+3.   You will see the activation options. Choose (1) HWID for Windows activation. Choose (2) Ohook for Office activation.
+4.   That's all.
+
+<details>
+  <summary>More options</summary>
+
+- Alternatively, you can use the following (It will be deprecated in the future.)
 ```
 irm https://massgrave.dev/get | iex
 ```
--   You will see the activation options. Follow the on-screen instructions.
--   That's all.
+- The URL `get.activated.win` might be blocked by some DNS services because it is a new domain.
+
+</details>
 
 ---
 
-- On older Windows builds you may need to run the below command before,  
-`[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12`  
-- The Powershell method does not work on Windows 7. Use the Method 2 - Traditional instead.  
-- The URL get.activated.win may be blocked by some DNS services because it is a new domain.
+### Method 2 - Traditional (Windows 7 and later)
 
-### Method 2 - Traditional
+<details>
+  <summary>Click here for info</summary>
 
--   Download the file under the code button from [GitHub](https://github.com/massgravel/Microsoft-Activation-Scripts) or [Bitbucket](https://bitbucket.org/WindowsAddict/microsoft-activation-scripts)
--   Right-click on the downloaded zip file and extract
--   In the extracted folder, find the folder named `All-In-One-Version`
--   Run the file named `MAS_AIO-CRC32_XXXXXXXX.cmd`
--   You will see the activation options, follow the on-screen instructions.
--   That's all.
+1.   Download the file using the links provided below.  
+`https://github.com/massgravel/Microsoft-Activation-Scripts/archive/refs/heads/master.zip`  
+or  
+`https://git.activated.win/massgrave/Microsoft-Activation-Scripts/archive/master.zip`
+2.   Right-click on the downloaded zip file and extract
+3.   In the extracted folder, find the folder named `All-In-One-Version`
+4.   Run the file named `MAS_AIO.cmd`
+5.   You will see the activation options, follow the on-screen instructions.
+6.   That's all.
 
-To run the scripts in unattended mode, check [here](https://massgrave.dev/command_line_switches)
+</details>
 
-</br>
+---
+
+> [!NOTE]
+>
+> - The IRM command in PowerShell downloads a script from a specified URL, and the IEX command executes it.
+> - Always double-check the URL before executing the command and verify the source if manually downloading files.
+> - Be cautious, as some spread malware disguised as MAS by using different URLs in the IRM command.
+
+---
+
+To run the scripts in unattended mode, check [here](https://massgrave.dev/command_line_switches).
 
 ```
-Latest Version: 2.6
-Release date: 20-Apr-2024
+Latest Version: 2.9
+Release date: 20-Dec-2024
 ```
 
 ### [Troubleshooting / Help](https://massgrave.dev/troubleshoot)
 ### [Download Original Windows & Office](https://massgrave.dev/genuine-installation-media)
 ### Homepage - [https://massgrave.dev/](https://massgrave.dev/)
+
+<div align="center">
+  
+[![1.1]][1]
+[![1.2]][2]
+[![1.3]][3]
+
+</div>
+
+<div align="center">
+  
+[![1.4]][4]
+[![1.5]][5]
+[![1.6]][6]
+[![1.7]][7]
+
+</div>
+
+[1.1]: https://massgrave.dev/img/logo_github.png (GitHub)
+[1.2]: https://massgrave.dev/img/logo_azuredevops.png (AzureDevOps)
+[1.3]: https://massgrave.dev/img/logo_gitea.png (Self-hosted Git)
+
+[1.4]: https://massgrave.dev/img/logo_discord.png (Chat with us without signup)
+[1.5]: https://massgrave.dev/img/logo_reddit.png (Reddit)
+[1.6]: https://massgrave.dev/img/logo_bluesky.png (Bluesky)
+[1.7]: https://massgrave.dev/img/logo_x.png (Twitter)
+
+[1]: https://github.com/massgravel/Microsoft-Activation-Scripts
+[2]: https://dev.azure.com/massgrave/_git/Microsoft-Activation-Scripts
+[3]: https://git.activated.win/massgrave/Microsoft-Activation-Scripts
+[4]: https://discord.gg/j2yFsV5ZVC
+[5]: https://www.reddit.com/r/MAS_Activator
+[6]: https://bsky.app/profile/massgrave.dev
+[7]: https://twitter.com/massgravel
 
 ---
 
